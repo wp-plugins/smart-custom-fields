@@ -1,10 +1,10 @@
 <?php
 /**
  * Smart_Custom_Fields_Revisions
- * Version    : 1.0.0
+ * Version    : 1.0.1
  * Author     : Takashi Kitajima
  * Created    : September 23, 2014
- * Modified   :
+ * Modified   : October 10, 2014
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -90,7 +90,7 @@ class Smart_Custom_Fields_Revisions {
 					foreach ( $group['fields'] as $field ) {
 						delete_metadata( 'post', $post_id, $field['name'] );
 
-						if ( $is_repeat && in_array( $field['type'], array( 'check', 'relation' ) ) ) {
+						if ( $is_repeat && $field['allow-multiple-data'] ) {
 							$repeat_multiple_data_fields = $_POST[SCF_Config::NAME][$field['name']];
 							foreach ( $repeat_multiple_data_fields as $values ) {
 								if ( is_array( $values ) ) {

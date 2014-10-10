@@ -1,14 +1,19 @@
 <?php
 /**
  * SCF
- * Version    : 1.0.0
+ * Version    : 1.0.1
  * Author     : Takashi Kitajima
  * Created    : September 23, 2014
- * Modified   :
+ * Modified   : October 10, 2014
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
 class SCF {
+
+	/**
+	 * Smart Custom Fields に登録されているフォームアイテム（field）のインスタンスの配列
+	 */
+	protected static $fields = array();
 
 	/**
 	 * データ取得処理は重いので、一度取得したデータは cache に保存する。
@@ -186,7 +191,7 @@ class SCF {
 			// チェックボックス以外
 			else {
 				foreach ( $_post_meta as $_post_meta_key => $value ) {
-					if ( in_array( $field['type'], array( 'textarea', 'wysiwyg' ) ) ) {
+					if ( in_array( $field['type'], array( 'wysiwyg' ) ) ) {
 						$value = apply_filters( 'the_content', $value );
 					} elseif ( $field['type'] === 'relation' ) {
 						if ( get_post_status( $value ) !== 'publish' )
@@ -208,12 +213,12 @@ class SCF {
 	 * @return mixed $post_meta
 	 */
 	protected static function get_field( $post_id, $field, $is_repeat, $name = null ) {
-		if ( in_array( $field['type'], array( 'check', 'relation' ) ) || $is_repeat ) {
+		if ( $field['allow-multiple-data'] || $is_repeat ) {
 			$post_meta = get_post_meta( $post_id, $field['name'] );
 		} else {
 			$post_meta = get_post_meta( $post_id, $field['name'], true );
 		}
-		if ( in_array( $field['type'], array( 'textarea', 'wysiwyg' ) ) ) {
+		if ( in_array( $field['type'], array( 'wysiwyg' ) ) ) {
 			if ( is_array( $post_meta ) ) {
 				$_post_meta = array();
 				foreach ( $post_meta as $key => $value ) {
@@ -251,11 +256,12 @@ class SCF {
 	 * @param array $settings
 	 */
 	public static function get_settings_posts( $post_type ) {
+		global $post;
 		$posts = array();
 		if ( isset( self::$settings_posts_cache[$post_type] ) ) {
 			return self::$settings_posts_cache[$post_type];
 		}
-		$posts = get_posts( array(
+		$_posts = get_posts( array(
 			'post_type'      => SCF_Config::NAME,
 			'posts_per_page' => -1,
 			'meta_query'     => array(
@@ -266,6 +272,24 @@ class SCF {
 				),
 			),
 		) );
+
+		// Post ID による表示条件設定がある場合はフィルタリングする
+		if ( isset( $post->ID ) ) {
+			foreach ( $_posts as $_post ) {
+				$condition_post_ids = array();
+				$_condition_post_ids = get_post_meta( $_post->ID, SCF_Config::PREFIX . 'condition-post-ids', true );
+				if ( $_condition_post_ids ) {
+					$_condition_post_ids = explode( ',', $_condition_post_ids );
+					foreach ( $_condition_post_ids as $condition_post_id ) {
+						$condition_post_ids[] = trim( $condition_post_id );
+					}
+					if ( $condition_post_ids && !in_array( $post->ID, $condition_post_ids ) ) {
+						continue;
+					}
+				}
+				$posts[] = $_post;
+			}
+		}
 		self::save_settings_posts_cache( $post_type, $posts );
 		return $posts;
 	}
@@ -297,7 +321,14 @@ class SCF {
 				if ( is_array( $_setting ) ) {
 					$setting = $_setting;
 				}
-				$settings[] = $setting;
+				$settings[SCF_Config::PREFIX . 'custom-field-' . $_post->ID] = $setting;
+			}
+			foreach ( $settings as $setting_key => $setting ) {
+				foreach ( $setting as $group_key => $group ) {
+					foreach ( $group['fields'] as $field_key => $field ) {
+						$settings[$setting_key][$group_key]['fields'][$field_key]['allow-multiple-data'] = self::$fields[$field['type']]->allow_multiple_data();
+					}
+				}
 			}
 		}
 		self::save_settings_cache( $post_type, $settings );
@@ -347,5 +378,27 @@ class SCF {
 			return false;
 		}
 		return true;
+	}
+
+	/**
+	 * add_field_instance
+	 * @param Smart_Custom_Fields_Field_Base $instance
+	 */
+	public static function add_field_instance( Smart_Custom_Fields_Field_Base $instance ) {
+		$instance_name = $instance->get_name();
+		if ( !empty( $instance_name ) ) {
+			self::$fields[$instance_name] = $instance;
+		}
+	}
+
+	/**
+	 * get_field_instance
+	 * @param string $field_name フォームアイテムの name
+	 * @param Smart_Custom_Fields_Field_Base
+	 */
+	public static function get_field_instance( $field_name ) {
+		if ( !empty( self::$fields[$field_name] ) ) {
+			return self::$fields[$field_name];
+		}
 	}
 }

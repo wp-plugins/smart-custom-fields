@@ -1,10 +1,10 @@
 <?php
 /**
  * Smart_Custom_Fields_Field_Check
- * Version    : 1.0.0
+ * Version    : 1.0.1
  * Author     : Takashi Kitajima
  * Created    : October 7, 2014
- * Modified   :
+ * Modified   : October 10, 2014
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -12,13 +12,14 @@ class Smart_Custom_Fields_Field_Check extends Smart_Custom_Fields_Field_Base {
 
 	/**
 	 * init
-	 * @return array ( name, label, optgroup )
+	 * @return array ( name, label, optgroup, allow-multiple-data )
 	 */
 	protected function init() {
 		return array(
 			'name'     => 'check',
 			'label'    => __( 'Check', 'smart-custom-fields' ),
 			'optgroup' => 'select-fields',
+			'allow-multiple-data' => true,
 		);
 	}
 
