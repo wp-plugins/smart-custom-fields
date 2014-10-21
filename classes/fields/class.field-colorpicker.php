@@ -1,14 +1,14 @@
 <?php
 /**
- * Smart_Custom_Fields_Field_Wysiwyg
- * Version    : 1.0.1
+ * Smart_Custom_Fields_Field_Colorpicker
+ * Version    : 1.0.0
  * Author     : Takashi Kitajima
- * Created    : October 7, 2014
- * Modified   : October 10, 2014
+ * Created    : October 21, 2014
+ * Modified   :
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
-class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
+class Smart_Custom_Fields_Field_Colorpicker extends Smart_Custom_Fields_Field_Base {
 
 	/**
 	 * init
@@ -17,9 +17,9 @@ class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
 	protected function init() {
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
 		return array(
-			'name'     => 'wysiwyg',
-			'label'    => __( 'Wysiwyg', 'smart-custom-fields' ),
-			'optgroup' => 'content-fields',
+			'name'     => 'colorpicker',
+			'label'    => __( 'Color picker', 'smart-custom-fields' ),
+			'optgroup' => 'other-fields',
 		);
 	}
 
@@ -29,29 +29,15 @@ class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
 	 */
 	public function admin_enqueue_scripts( $hook ) {
 		if ( in_array( $hook, array( 'post-new.php', 'post.php' ) ) ) {
-			add_action( 'after_wp_tiny_mce', array( $this, 'after_wp_tiny_mce' ) );
+			wp_enqueue_style( 'wp-color-picker' );
+			wp_enqueue_script(
+				SCF_Config::PREFIX . 'colorpicker',
+				plugins_url( '../../js/editor-colorpicker.js', __FILE__ ),
+				array( 'jquery', 'wp-color-picker' ),
+				false,
+				true
+			);
 		}
-	}
-
-	public function after_wp_tiny_mce() {
-		printf(
-			'<script type="text/javascript" src="%s"></script>',
-			plugin_dir_url( __FILE__ ) . '../../js/editor-wysiwyg.js'
-		);
-	}
-
-	/**
-	 * after_loaded
-	 */
-	protected function after_loaded() {
-		add_action( 'admin_footer', array( $this, 'admin_footer' ) );
-	}
-	public function admin_footer() {
-		?>
-		<div style="display:none;">
-			<?php wp_editor( '', SCF_Config::PREFIX . 'wysiwyg-base' ); ?>
-		</div>
-		<?php
 	}
 
 	/**
@@ -64,16 +50,11 @@ class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
 		$name = $this->get_name_attribute( $field['name'], $index );
 		$disabled = $this->get_disable_attribute( $index );
 		return sprintf(
-			'<div class="wp-editor-wrap">
-				<div class="wp-media-buttons">%s</div>
-				<div class="wp-editor-container">
-					<textarea name="%s" rows="8" class="widefat smart-cf-wp-editor" %s>%s</textarea>
-				</div>
-			</div>',
-			$this->media_buttons(),
+			'<input type="text" name="%s" value="%s" class="%s" %s />',
 			esc_attr( $name ),
-			disabled( true, $disabled, false ),
-			wp_richedit_pre( $value )
+			esc_attr( $value ),
+			esc_attr( SCF_Config::PREFIX . 'colorpicker' ),
+			disabled( true, $disabled, false )
 		);
 	}
 
@@ -87,10 +68,10 @@ class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
 		<tr>
 			<th><?php esc_html_e( 'Default', 'smart-custom-fields' ); ?></th>
 			<td>
-				<textarea
+				<input type="text"
 					name="<?php echo esc_attr( $this->get_field_name( $group_key, $field_key, 'default' ) ); ?>"
 					class="widefat"
-					rows="5"><?php echo esc_textarea( "\n" . $this->get_field_value( 'default' ) ); ?></textarea>
+					value="<?php echo esc_attr( $this->get_field_value( 'default' ) ); ?>" />
 			</td>
 		</tr>
 		<tr>
@@ -104,14 +85,5 @@ class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
 			</td>
 		</tr>
 		<?php
-	}
-	
-	protected function media_buttons( $editor_id = 'content' ) {
-		$img = '<span class="wp-media-buttons-icon"></span> ';
-		return sprintf( '<a href="#" class="button insert-media add_media" data-editor="%s" title="%s">%s</a>',
-			esc_attr( $editor_id ),
-			esc_attr__( 'Add Media' ),
-			$img . __( 'Add Media' )
-		);
 	}
 }

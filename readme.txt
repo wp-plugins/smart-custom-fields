@@ -4,7 +4,7 @@ Donate link: http://www.amazon.co.jp/registry/wishlist/39ANKRNSTNW40
 Tags: plugin, custom field, custom, field, meta, meta field, repeat, repeatable
 Requires at least: 3.9
 Tested up to: 4.0
-Stable tag: 1.0.1
+Stable tag: 1.0.2
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -31,6 +31,7 @@ https://www.youtube.com/watch?v=WxPZurn0yvI
 * Image
 * File
 * Relation
+* Color picker
 
 = How to get meta data ? =
 
@@ -59,6 +60,12 @@ https://github.com/inc2734/smart-custom-fields/
 2. Post edit page.
 
 == Changelog ==
+
+= 1.0.2 =
+* Add color picker field.
+* Add smart-cf-before-save-post action hook.
+* Add smart-cf-after-save-post action hook.
+* Add smart-cf-validate-save-post filter hook.
 
 = 1.0.1 =
 * Add display condition by post id.

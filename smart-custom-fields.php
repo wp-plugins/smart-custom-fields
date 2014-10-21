@@ -3,11 +3,11 @@
  * Plugin name: Smart Custom Fields
  * Plugin URI: https://github.com/inc2734/smart-custom-fields/
  * Description: Smart Custom Fields is a simple plugin that management custom fields.
- * Version: 1.0.1
+ * Version: 1.0.2
  * Author: Takashi Kitajima
  * Author URI: http://2inc.org
  * Created: October 9, 2014
- * Modified: October 10, 2014
+ * Modified: October 21, 2014
  * Text Domain: smart-custom-fields
  * Domain Path: /languages/
  * License: GPLv2
@@ -67,7 +67,6 @@ class Smart_Custom_Fields {
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
 		add_action( 'add_meta_boxes', array( $this, 'add_meta_boxes' ), 10, 2 );
 		add_action( 'save_post', array( $this, 'save_post' ) );
-		add_action( 'wp_ajax_smart-cf-relational-posts-search', array( $this, 'relational_posts_search' ) );
 	}
 
 	/**
@@ -113,26 +112,7 @@ class Smart_Custom_Fields {
 				'image_uploader_title' => esc_html__( 'Image setting', 'smart-custom-fields' ),
 				'file_uploader_title'  => esc_html__( 'File setting', 'smart-custom-fields' ),
 			) );
-			add_action( 'after_wp_tiny_mce', array( $this, 'after_wp_tiny_mce' ) );
-
-			// relation field
-			wp_enqueue_script(
-				SCF_Config::PREFIX . 'editor-relation',
-				plugin_dir_url( __FILE__ ) . 'js/editor-relation.js',
-				array( 'jquery' ),
-				null,
-				true
-			);
-			wp_localize_script( SCF_Config::PREFIX . 'editor-relation', 'smart_cf_relation', array(
-				'endpoint' => admin_url( 'admin-ajax.php' ),
-				'action'   => SCF_Config::PREFIX . 'relational-posts-search',
-				'nonce'    => wp_create_nonce( SCF_Config::NAME . '-relation' )
-			) );
 		}
-	}
-
-	public function after_wp_tiny_mce() {
-		printf( '<script type="text/javascript" src="%s"></script>', plugin_dir_url( __FILE__ ) . 'js/editor-wysiwyg.js' );
 	}
 
 	/**
@@ -268,14 +248,29 @@ class Smart_Custom_Fields {
 				if ( in_array( $name, $multiple_data_fields ) && $value === '' )
 					continue;
 				if ( !is_array( $value ) ) {
-					add_post_meta( $post_id, $name, $value );
+					$this->add_post_meta( $post_id, $name, $value );
 				} else {
 					foreach ( $value as $val ) {
-						add_post_meta( $post_id, $name, $val );
+						$this->add_post_meta( $post_id, $name, $val );
 					}
 				}
 			}
 		}
+	}
+
+	/**
+	 * add_post_meta
+	 * @param int $post_id
+	 * @param string $name
+	 * @param mixed $value
+	 */
+	protected function add_post_meta( $post_id, $name, $value ) {
+		do_action( SCF_Config::PREFIX . '-before-save-post', $post_id, $name, $value );
+		$is_valid = apply_filters( SCF_Config::PREFIX . '-validate-save-post', true, $post_id, $name, $value );
+		if ( $is_valid ) {
+			add_post_meta( $post_id, $name, $value );
+		}
+		do_action( SCF_Config::PREFIX . '-after-save-post', $post_id, $name, $value );
 	}
 
 	/**
@@ -485,29 +480,6 @@ class Smart_Custom_Fields {
 			);
 		}
 		echo '</table></div>';
-	}
-
-	/**
-	 * relational_posts_search
-	 */
-	public function relational_posts_search() {
-		check_ajax_referer( SCF_Config::NAME . '-relation', 'nonce' );
-		$_posts = array();
-		if ( isset( $_POST['post_types'], $_POST['click_count' ] ) ) {
-			$post_type = explode( ',', $_POST['post_types'] );
-			$posts_per_page = get_option( 'posts_per_page' );
-			$offset = $_POST['click_count'] * $posts_per_page;
-			$_posts = get_posts( array(
-				'post_type'      => $post_type,
-				'offset'         => $offset,
-				'order'          => 'ASC',
-				'orderby'        => 'ID',
-				'posts_per_page' => $posts_per_page,
-			) );
-		}
-		header( 'Content-Type: application/json; charset=utf-8' );
-		echo json_encode( $_posts );
-		die();
 	}
 }
 new Smart_Custom_Fields();
