@@ -176,16 +176,14 @@ class Smart_Custom_Fields_Revisions {
 	}
 
 	/**
-	 * _wp_post_revision_field_debug_preview
-	 * @param $value
-	 * @param $column
-	 * @param array $post
+	 * _wp_post_revision_fields で追加した debug-preview フィールドに関連するリビジョン画面を表示
+	 *
+	 * @param string $value
+	 * @param string $column
+	 * @param WP_Post $post
 	 * @return string
 	 */
-	public function _wp_post_revision_field_debug_preview( $value = '', $column = null, $post ) {
-		if ( is_null( $column ) ) {
-			$column = SCF_Config::PREFIX . 'debug-preview';
-		}
+	public function _wp_post_revision_field_debug_preview( $value, $column, $post ) {
 		$output = '';
 		$values = SCF::gets( $post->ID );
 		foreach ( $values as $key => $value ) {
@@ -213,10 +211,14 @@ class Smart_Custom_Fields_Revisions {
 	}
 
 	/**
-	 * wp_save_post_revision_check_for_changes
+	 * 現在の投稿のメタデータと送信されたメタデータが異なっていればリビジョンを保存する
+	 *
+	 * @param bool $check_for_changes
+	 * @param WP_Post $last_revision
+	 * @param WP_Post $post
 	 * @return bool false ならリビジョンとして保存される。
 	 */
-	public function wp_save_post_revision_check_for_changes( $check_for_changes = true, $last_revision, $post ) {
+	public function wp_save_post_revision_check_for_changes( $check_for_changes, $last_revision, $post ) {
 		$post_meta = array();
 		$p = get_post_custom( $post->ID );
 		foreach ( $p as $key => $value ) {
@@ -226,8 +228,12 @@ class Smart_Custom_Fields_Revisions {
 			}
 		}
 
-		if ( isset( $_POST[SCF_Config::NAME] ) && serialize( $post_meta ) != serialize( $_POST[SCF_Config::NAME] ) ) {
-			return false;
+		if ( isset( $_POST[SCF_Config::NAME] ) ) {
+			$serialized_post_meta = serialize( $post_meta );
+			$serialized_post_data = serialize( $_POST[SCF_Config::NAME] );
+			if ( $serialized_post_meta != $serialized_post_data ) {
+				return false;
+			}
 		}
 		return true;
 	}
