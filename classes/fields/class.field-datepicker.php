@@ -1,63 +1,208 @@
 <?php
 /**
  * Smart_Custom_Fields_Field_Datepicker
- * Version    : 1.0.0
+ * Version    : 1.1.0
  * Author     : Takashi Kitajima
  * Created    : January 17, 2015
- * Modified   :
+ * Modified   : February 27, 2015
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
 class Smart_Custom_Fields_Field_Datepicker extends Smart_Custom_Fields_Field_Base {
 
 	/**
-	 * init
-	 * @return array ( name, label, optgroup )
+	 * 必須項目の設定
+	 *
+	 * @return array
 	 */
 	protected function init() {
-		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
+		add_action(
+			SCF_Config::PREFIX . 'before-editor-enqueue-scripts',
+			array( $this, 'editor_enqueue_scripts' )
+		);
+		add_action(
+			SCF_Config::PREFIX . 'before-settings-enqueue-scripts',
+			array( $this, 'settings_enqueue_scripts' )
+		);
 		return array(
-			'name'     => 'datepicker',
-			'label'    => __( 'Date picker', 'smart-custom-fields' ),
-			'optgroup' => 'other-fields',
+			'type'         => 'datepicker',
+			'display-name' => __( 'Date picker', 'smart-custom-fields' ),
+			'optgroup'     => 'other-fields',
 		);
 	}
 
 	/**
-	 * admin_enqueue_scripts
-	 * @param string $hook
+	 * 設定項目の設定
+	 *
+	 * @return array
 	 */
-	public function admin_enqueue_scripts( $hook ) {
-		global $wp_scripts;
-		if ( in_array( $hook, array( 'post-new.php', 'post.php' ) ) ) {
-			$ui = $wp_scripts->query( 'jquery-ui-core' );
-			wp_enqueue_style(
-				'jquery.ui',
-				'//ajax.googleapis.com/ajax/libs/jqueryui/' . $ui->ver . '/themes/smoothness/jquery-ui.min.css',
-				array(),
-				$ui->ver
-			);
-			wp_enqueue_script( 'jquery-ui-datepicker' );
-			wp_enqueue_script(
-				SCF_Config::PREFIX . 'datepicker',
-				plugins_url( '../../js/editor-datepicker.js', __FILE__ ),
-				array( 'jquery', 'jquery-ui-datepicker' ),
-				false,
-				true
-			);
-		}
+	protected function options() {
+		return array(
+			'date_format' => '',
+			'max_date'    => '',
+			'min_date'    => '',
+			'default'     => '',
+			'notes'       => '',
+		);
 	}
 
 	/**
-	 * get_field
-	 * @param array $field フィールドの情報
+	 * CSS、JSの読み込み
+	 */
+	public function editor_enqueue_scripts() {
+		global $wp_scripts;
+		$ui = $wp_scripts->query( 'jquery-ui-core' );
+		wp_enqueue_style(
+			'jquery.ui',
+			'//ajax.googleapis.com/ajax/libs/jqueryui/' . $ui->ver . '/themes/smoothness/jquery-ui.min.css',
+			array(),
+			$ui->ver
+		);
+		wp_enqueue_script( 'jquery-ui-datepicker' );
+		wp_enqueue_script(
+			SCF_Config::PREFIX . 'editor-datepicker',
+			plugins_url( '../../js/editor-datepicker.js', __FILE__ ),
+			array( 'jquery', 'jquery-ui-datepicker' ),
+			false,
+			true
+		);
+	}
+
+	/**
+	 * CSS、JSの読み込み
+	 */
+	public function settings_enqueue_scripts() {
+		global $wp_scripts;
+		$ui = $wp_scripts->query( 'jquery-ui-core' );
+		wp_enqueue_style(
+			'jquery.ui',
+			'//ajax.googleapis.com/ajax/libs/jqueryui/' . $ui->ver . '/themes/smoothness/jquery-ui.min.css',
+			array(),
+			$ui->ver
+		);
+		wp_enqueue_script( 'jquery-ui-datepicker' );
+		wp_enqueue_script(
+			SCF_Config::PREFIX . 'settings-datepicker',
+			plugins_url( '../../js/settings-datepicker.js', __FILE__ ),
+			array( 'jquery', 'jquery-ui-datepicker' ),
+			false,
+			true
+		);
+	}
+
+	/**
+	 * 投稿画面にフィールドを表示
+	 *
 	 * @param int $index インデックス番号
 	 * @param mixed $value 保存されている値（check のときだけ配列）
+	 * @return string html
 	 */
-	public function get_field( $field, $index, $value ) {
-		$name = $this->get_name_attribute( $field['name'], $index );
+	public function get_field( $index, $value ) {
+		$name     = $this->get_field_name_in_editor( $index );
 		$disabled = $this->get_disable_attribute( $index );
+		$data_js  = $this->get_data_js();
 
+		return sprintf(
+			'<input type="text" name="%s" value="%s" class="%s" %s data-js=\'%s\' />',
+			esc_attr( $name ),
+			esc_attr( $value ),
+			esc_attr( SCF_Config::PREFIX . 'datepicker' ),
+			disabled( true, $disabled, false ),
+			$data_js
+		);
+	}
+
+	/**
+	 * 設定画面にフィールドを表示（オリジナル項目）
+	 *
+	 * @param int $group_key
+	 * @param int $field_key
+	 */
+	public function display_field_options( $group_key, $field_key ) {
+		?>
+		<tr>
+			<th><?php esc_html_e( 'Default', 'smart-custom-fields' ); ?></th>
+			<td>
+				<input type="text"
+					name="<?php echo esc_attr( $this->get_field_name_in_setting( $group_key, $field_key, 'default' ) ); ?>"
+					class="widefat default-option"
+					value="<?php echo esc_attr( $this->get( 'default' ) ); ?>"
+					data-js='<?php echo $this->get_data_js(); ?>' />
+			</td>
+		</tr>
+		<tr>
+			<th><?php esc_html_e( 'Date Format', 'smart-custom-fields' ); ?></th>
+			<td>
+				<input type="text"
+					name="<?php echo esc_attr( $this->get_field_name_in_setting( $group_key, $field_key, 'date_format' ) ); ?>"
+					class="widefat"
+					value="<?php echo esc_attr( $this->get( 'date_format' ) ); ?>"
+				/><br />
+				<span class="<?php echo esc_attr( SCF_Config::PREFIX ); ?>notes">
+					<?php esc_html_e( 'e.g dd/mm/yy', 'smart-custom-fields' ); ?>
+					<?php printf(
+						esc_html( 'Prease see %sdateFormat%s', 'smart-custom-fields' ),
+						'<a href="http://api.jqueryui.com/datepicker/#option-dateFormat" target="_blank">',
+						'</a>'
+					); ?>
+				</span>
+			</td>
+		</tr>
+		<tr>
+			<th><?php esc_html_e( 'Max Date', 'smart-custom-fields' ); ?></th>
+			<td>
+				<input type="text"
+					name="<?php echo esc_attr( $this->get_field_name_in_setting( $group_key, $field_key, 'max_date' ) ); ?>"
+					class="widefat"
+					value="<?php echo esc_attr( $this->get( 'max_date' ) ); ?>"
+				/><br />
+				<span class="<?php echo esc_attr( SCF_Config::PREFIX ); ?>notes">
+					<?php esc_html_e( 'e.g +1m +1w', 'smart-custom-fields' ); ?>
+					<?php printf(
+						esc_html( 'Prease see %smaxData%s', 'smart-custom-fields' ),
+						'<a href="http://api.jqueryui.com/datepicker/#option-maxDate" target="_blank">',
+						'</a>'
+					); ?>
+				</span>
+			</td>
+		</tr>
+		<tr>
+			<th><?php esc_html_e( 'Min Date', 'smart-custom-fields' ); ?></th>
+			<td>
+				<input type="text"
+					name="<?php echo esc_attr( $this->get_field_name_in_setting( $group_key, $field_key, 'min_date' ) ); ?>"
+					class="widefat"
+					value="<?php echo esc_attr( $this->get( 'min_date' ) ); ?>"
+				/><br />
+				<span class="<?php echo esc_attr( SCF_Config::PREFIX ); ?>notes">
+					<?php esc_html_e( 'e.g +1m +1w', 'smart-custom-fields' ); ?>
+					<?php printf(
+						esc_html( 'Prease see %sminData%s', 'smart-custom-fields' ),
+						'<a href="http://api.jqueryui.com/datepicker/#option-minDate" target="_blank">',
+						'</a>'
+					); ?>
+				</span>
+			</td>
+		</tr>
+		<tr>
+			<th><?php esc_html_e( 'Notes', 'smart-custom-fields' ); ?></th>
+			<td>
+				<input type="text"
+					name="<?php echo esc_attr( $this->get_field_name_in_setting( $group_key, $field_key, 'notes' ) ); ?>"
+					class="widefat"
+					value="<?php echo esc_attr( $this->get( 'notes' ) ); ?>"
+				/>
+			</td>
+		</tr>
+		<?php
+	}
+
+	/**
+	 * 管理画面で設定された datepicker のオプションを json_encode して返す
+	 *
+	 * @return string json_encode された設定
+	 */
+	protected function get_data_js() {
 		$js = array(
 			'showMonthAfterYear' => true,
 			'changeYear'         => true,
@@ -85,107 +230,15 @@ class Smart_Custom_Fields_Field_Datepicker extends Smart_Custom_Fields_Field_Bas
 				)
 			) );
 		}
-		if ( !empty( $field['date_format'] ) ) {
-			$js['dateFormat'] = $field['date_format'];
+		if ( $this->get( 'date_format' ) ) {
+			$js['dateFormat'] = $this->get( 'date_format' );
 		}
-		if ( !empty( $field['max_date'] ) ) {
-			$js['maxDate'] = $field['max_date'];
+		if ( $this->get( 'max_date' ) ) {
+			$js['maxDate'] = $this->get( 'max_date' );
 		}
-		if ( !empty( $field['min_date'] ) ) {
-			$js['minDate'] = $field['min_date'];
+		if ( $this->get( 'min_date' ) ) {
+			$js['minDate'] = $this->get( 'min_date' );
 		}
-		$data_js = json_encode( $js );
-
-		return sprintf(
-			'<input type="text" name="%s" value="%s" class="%s" %s data-js=\'%s\' />',
-			esc_attr( $name ),
-			esc_attr( $value ),
-			esc_attr( SCF_Config::PREFIX . 'datepicker' ),
-			disabled( true, $disabled, false ),
-			$data_js
-		);
-	}
-
-	/**
-	 * display_field_options
-	 * @param int $group_key
-	 * @param int $field_key
-	 */
-	public function display_field_options( $group_key, $field_key ) {
-		?>
-		<tr>
-			<th><?php esc_html_e( 'Default', 'smart-custom-fields' ); ?></th>
-			<td>
-				<input type="text"
-					name="<?php echo esc_attr( $this->get_field_name( $group_key, $field_key, 'default' ) ); ?>"
-					class="widefat"
-					value="<?php echo esc_attr( $this->get_field_value( 'default' ) ); ?>" />
-			</td>
-		</tr>
-		<tr>
-			<th><?php esc_html_e( 'Date Format', 'smart-custom-fields' ); ?></th>
-			<td>
-				<input type="text"
-					name="<?php echo esc_attr( $this->get_field_name( $group_key, $field_key, 'date_format' ) ); ?>"
-					class="widefat"
-					value="<?php echo esc_attr( $this->get_field_value( 'date_format' ) ); ?>"
-				/><br />
-				<span class="<?php echo esc_attr( SCF_Config::PREFIX ); ?>notes">
-					<?php esc_html_e( 'e.g dd/mm/yy', 'smart-custom-fields' ); ?>
-					<?php printf(
-						esc_html( 'Prease see %sdateFormat%s', 'smart-custom-fields' ),
-						'<a href="http://api.jqueryui.com/datepicker/#option-dateFormat" target="_blank">',
-						'</a>'
-					); ?>
-				</span>
-			</td>
-		</tr>
-		<tr>
-			<th><?php esc_html_e( 'Max Date', 'smart-custom-fields' ); ?></th>
-			<td>
-				<input type="text"
-					name="<?php echo esc_attr( $this->get_field_name( $group_key, $field_key, 'max_date' ) ); ?>"
-					class="widefat"
-					value="<?php echo esc_attr( $this->get_field_value( 'max_date' ) ); ?>"
-				/><br />
-				<span class="<?php echo esc_attr( SCF_Config::PREFIX ); ?>notes">
-					<?php esc_html_e( 'e.g +1m +1w', 'smart-custom-fields' ); ?>
-					<?php printf(
-						esc_html( 'Prease see %smaxData%s', 'smart-custom-fields' ),
-						'<a href="http://api.jqueryui.com/datepicker/#option-maxDate" target="_blank">',
-						'</a>'
-					); ?>
-				</span>
-			</td>
-		</tr>
-		<tr>
-			<th><?php esc_html_e( 'Min Date', 'smart-custom-fields' ); ?></th>
-			<td>
-				<input type="text"
-					name="<?php echo esc_attr( $this->get_field_name( $group_key, $field_key, 'min_date' ) ); ?>"
-					class="widefat"
-					value="<?php echo esc_attr( $this->get_field_value( 'min_date' ) ); ?>"
-				/><br />
-				<span class="<?php echo esc_attr( SCF_Config::PREFIX ); ?>notes">
-					<?php esc_html_e( 'e.g +1m +1w', 'smart-custom-fields' ); ?>
-					<?php printf(
-						esc_html( 'Prease see %sminData%s', 'smart-custom-fields' ),
-						'<a href="http://api.jqueryui.com/datepicker/#option-minDate" target="_blank">',
-						'</a>'
-					); ?>
-				</span>
-			</td>
-		</tr>
-		<tr>
-			<th><?php esc_html_e( 'Notes', 'smart-custom-fields' ); ?></th>
-			<td>
-				<input type="text"
-					name="<?php echo esc_attr( $this->get_field_name( $group_key, $field_key, 'notes' ) ); ?>"
-					class="widefat"
-					value="<?php echo esc_attr( $this->get_field_value( 'notes' ) ); ?>"
-				/>
-			</td>
-		</tr>
-		<?php
+		return json_encode( $js );
 	}
 }

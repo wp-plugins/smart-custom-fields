@@ -3,8 +3,8 @@ Contributors: inc2734, toro_unit
 Donate link: http://www.amazon.co.jp/registry/wishlist/39ANKRNSTNW40
 Tags: plugin, custom field, custom, field, meta, meta field, repeat, repeatable
 Requires at least: 3.9
-Tested up to: 4.1
-Stable tag: 1.1.3
+Tested up to: 4.1.1
+Stable tag: 1.2.0
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,9 +45,19 @@ This method can get meta data of any group.
 * SCF::gets()  
 This method can get all meta data.
 
+= Register custom fields by the code. =
+
+https://gist.github.com/inc2734/9f6d65c7473d060d0fd6
+
 = GitHub =
 
 https://github.com/inc2734/smart-custom-fields/
+
+= Translators =
+
+* Japanese(ja) - [JOTAKI Taisuke ](https://profiles.wordpress.org/tai/)
+
+You can send your own language pack to me.
 
 == Installation ==
 
@@ -61,6 +71,15 @@ https://github.com/inc2734/smart-custom-fields/
 2. Post edit page.
 
 == Changelog ==
+
+= 1.2.0 =
+* refactoring. A lot of changes in all.
+* Renewd the Smart_Custom_Fields_Field_Base.
+* Add filter hook smart-cf-register-fields. If You use this hook, you can define custom fields by the code.
+* Add action hook smart-cf-before-editor-enqueue-scripts
+* Add action hook smart-cf-after-editor-enqueue-scripts
+* Add action hook smart-cf-before-settings-enqueue-scripts
+* Add action hook smart-cf-after-settings-enqueue-scripts
 
 = 1.1.3 =
 * Change method SCF::get_field to SCF::get_value_by_field
