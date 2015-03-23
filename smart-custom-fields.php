@@ -3,11 +3,11 @@
  * Plugin name: Smart Custom Fields
  * Plugin URI: https://github.com/inc2734/smart-custom-fields/
  * Description: Smart Custom Fields is a simple plugin that management custom fields.
- * Version: 1.2.0
+ * Version: 1.3.0
  * Author: Takashi Kitajima
  * Author URI: http://2inc.org
  * Created: October 9, 2014
- * Modified: February 27, 2015
+ * Modified: March 19, 2015
  * Text Domain: smart-custom-fields
  * Domain Path: /languages
  * License: GPLv2
@@ -35,6 +35,7 @@ class Smart_Custom_Fields {
 		);
 		
 		do_action( SCF_Config::PREFIX . 'load' );
+		require_once plugin_dir_path( __FILE__ ) . 'classes/models/class.meta.php';
 		require_once plugin_dir_path( __FILE__ ) . 'classes/models/class.setting.php';
 		require_once plugin_dir_path( __FILE__ ) . 'classes/models/class.group.php';
 		require_once plugin_dir_path( __FILE__ ) . 'classes/models/class.abstract-field-base.php';
@@ -87,9 +88,30 @@ class Smart_Custom_Fields {
 			new Smart_Custom_Fields_Controller_Settings();
 		}
 		// その他の新規作成・編集画面
-		elseif ( SCF::get_settings( $screen->id ) ) {
-			require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.editor.php';
-			new Smart_Custom_Fields_Controller_Editor();
+		elseif ( in_array( $screen->id, get_post_types() ) ) {
+			$post_id = $this->get_post_id_in_admin();
+			$Post = new stdClass();
+			$Post->ID        = $post_id;
+			$Post->post_type = $screen->id;
+			if ( SCF::get_settings( new WP_Post( $Post ) ) ) {
+				require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.editor.php';
+				new Smart_Custom_Fields_Revisions();
+				new Smart_Custom_Fields_Controller_Editor();
+			}
+		}
+		// プロフィール編集画面
+		elseif ( in_array( $screen->id, array( 'profile', 'user-edit' ) ) ) {
+			$user_id = $this->get_user_id_in_admin();
+			$user_data = get_userdata( $user_id );
+			$roles[0]  = false;
+			if ( $user_data ) {
+				$roles = $user_data->roles;
+			}
+			if ( SCF::get_settings( get_userdata( $user_id ) ) ) {
+				require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.editor.php';
+				require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.profile.php';
+				new Smart_Custom_Fields_Controller_Profile();
+			}
 		}
 	}
 
@@ -146,6 +168,40 @@ class Smart_Custom_Fields {
 			'manage_options',
 			'post-new.php?post_type=' . SCF_Config::NAME
 		);
+	}
+
+	/**
+	 * 編集画面でその投稿のIDを取得
+	 *
+	 * @return int
+	 */
+	protected function get_post_id_in_admin() {
+		$post_id = false;
+		if ( !empty( $_GET['post'] ) ) {
+			$post_id = $_GET['post'];
+		} elseif ( !empty( $_POST['post_ID'] ) ) {
+			$post_id = $_POST['post_ID'];
+		}
+		return $post_id;
+	}
+
+	/**
+	 * プロフィール、ユーザー編集画面でそのユーザーのIDを取得
+	 *
+	 * @return int
+	 */
+	protected function get_user_id_in_admin() {
+		$screen = get_current_screen();
+		$user_id = false;
+		if ( !empty( $_GET['user_id'] ) ) {
+			$user_id = $_GET['user_id'];
+		} elseif ( !empty( $_POST['user_id'] ) ) {
+			$user_id = $_POST['user_id'];
+		} elseif ( $screen->id === 'profile' ) {
+			$current_user = wp_get_current_user();
+			$user_id      = $current_user->ID;
+		}
+		return $user_id;
 	}
 }
 new Smart_Custom_Fields();

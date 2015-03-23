@@ -4,7 +4,7 @@ Donate link: http://www.amazon.co.jp/registry/wishlist/39ANKRNSTNW40
 Tags: plugin, custom field, custom, field, meta, meta field, repeat, repeatable
 Requires at least: 3.9
 Tested up to: 4.1.1
-Stable tag: 1.2.0
+Stable tag: 1.3.0
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -45,6 +45,15 @@ This method can get meta data of any group.
 * SCF::gets()  
 This method can get all meta data.
 
+* SCF::get_user_meta( $user_id, 'field-name' )  
+This method can get any user meta data.
+
+* SCF::get_user_meta( $user_id, 'group-name' )  
+This method can get user meta data of any group.
+
+* SCF::get_user_meta( $user_id )  
+This method can get all user meta data.
+
 = Register custom fields by the code. =
 
 https://gist.github.com/inc2734/9f6d65c7473d060d0fd6
@@ -71,6 +80,25 @@ You can send your own language pack to me.
 2. Post edit page.
 
 == Changelog ==
+
+= 1.3.0 =
+* refactoring.
+* Add profile custom fields.
+* Add filter hook smart-cf-validate-get-value
+* Add method SCF::get_user_meta( $user_id, $name = null )
+* Fixed a revision bug.
+* Fixed a bug that thumbnail is not displayed correctly in preview.
+* Fixed a relation field bug.
+* Changed return value of SCF::get with multiple data in loop.
+* Changed revision screen format.
+
+= 1.2.2 =
+* Fixed a bug that can not get the correct data when the posts use post id filtering.
+* Changed that original the_content filter does not apply to wisywig field.
+* Add post_id attribute to smart-cf-register-fields.
+
+= 1.2.1 =
+* Fixed a bug that post id filtering incorrect.
 
 = 1.2.0 =
 * refactoring. A lot of changes in all.
