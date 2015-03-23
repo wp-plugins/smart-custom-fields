@@ -1,10 +1,10 @@
 <?php
 /**
  * Smart_Custom_Fields_Revisions
- * Version    : 1.1.1
+ * Version    : 1.1.2
  * Author     : Takashi Kitajima
  * Created    : September 23, 2014
- * Modified   : March 13, 2015
+ * Modified   : March 19, 2015
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -40,41 +40,18 @@ class Smart_Custom_Fields_Revisions {
 	 * @param int $revision_id
 	 */
 	public function wp_restore_post_revision( $post_id, $revision_id ) {
-		$post      = get_post( $post_id );
-		$revision  = get_post( $revision_id );
-		$post_type = get_post_type();
+		$post     = get_post( $post_id );
+		$revision = get_post( $revision_id );
 
-		$settings = SCF::get_settings( $post_type, $post_id );
-		foreach ( $settings as $Setting ) {
-			$groups = $Setting->get_groups();
-			foreach ( $groups as $Group ) {
-				$fields = $Group->get_fields();
-				foreach ( $fields as $Field ) {
-					$field_name = $Field->get( 'name' );
-					delete_post_meta( $post->ID, $field_name );
-					$value = SCF::get( $field_name, $revision->ID );
-					if ( is_array( $value ) ) {
-						foreach ( $value as $val ) {
-							add_post_meta( $post->ID, $field_name, $val );
-						}
-					} else {
-						add_post_meta( $post->ID, $field_name, $value );
-					}
-				}
-			}
-		}
-
-		$repeat_multiple_data_name = SCF_Config::PREFIX . 'repeat-multiple-data';
-		delete_post_meta( $post->ID, $repeat_multiple_data_name );
-		$repeat_multiple_data = get_post_meta( $revision->ID, $repeat_multiple_data_name, true );
-		add_post_meta( $post->ID, $repeat_multiple_data_name, $repeat_multiple_data );
+		$Meta = new Smart_Custom_Fields_Meta( $post );
+		$Meta->restore( $revision );
 	}
 
 	/**
 	 * リビジョンデータを保存
 	 * *_post_meta はリビジョンIDのときに自動的に本物IDに変換して処理してしまうので、*_metadata を使うこと
 	 *
-	 * @param int $post_id
+	 * @param int $post_id リビジョンの投稿ID
 	 */
 	public function wp_insert_post( $post_id ) {
 		if ( !isset( $_POST[SCF_Config::NAME] ) ) {
@@ -83,7 +60,7 @@ class Smart_Custom_Fields_Revisions {
 		if ( !wp_is_post_revision( $post_id ) ) {
 			return;
 		}
-		$settings = SCF::get_settings( get_post_type( $post_id ), $post_id );
+		$settings = SCF::get_settings( get_post( $post_id ) );
 		if ( !$settings ) {
 			return;
 		}
@@ -93,62 +70,12 @@ class Smart_Custom_Fields_Revisions {
 			SCF_Config::PREFIX . 'fields-nonce'
 		);
 
-		// 繰り返しフィールドのチェックボックスは、普通のチェックボックスと混ざって
-		// 判別できなくなるのでわかるように保存しておく
-		$repeat_multiple_data = array();
-
-		// チェックボックスが未入力のときは "" がくるので、それは保存しないように判別
-		$multiple_data_fields = array();
-
-		$post_type = get_post_type( $post_id );
-		$settings = SCF::get_settings( $post_type, $post_id );
-		foreach ( $settings as $Setting ) {
-			$groups = $Setting->get_groups();
-			foreach ( $groups as $Group ) {
-				$fields = $Group->get_fields();
-				foreach ( $fields as $Field ) {
-					$field_name = $Field->get( 'name' );
-					delete_metadata( 'post', $post_id, $field_name );
-					if ( $Field->get_attribute( 'allow-multiple-data' ) ) {
-						$multiple_data_fields[] = $field_name;
-					}
-				
-					if ( $Group->is_repeatable() && $Field->get_attribute( 'allow-multiple-data' ) ) {
-						$repeat_multiple_data_fields = $_POST[SCF_Config::NAME][$field_name];
-						foreach ( $repeat_multiple_data_fields as $values ) {
-							if ( is_array( $values ) ) {
-								$repeat_multiple_data[$field_name][] = count( $values );
-							} else {
-								$repeat_multiple_data[$field_name][] = 0;
-							}
-						}
-					}
-				}
-			}
-		}
-
-		delete_metadata( 'post', $post_id, SCF_Config::PREFIX . 'repeat-multiple-data' );
-		if ( $repeat_multiple_data ) {
-			update_metadata( 'post', $post_id, SCF_Config::PREFIX . 'repeat-multiple-data', $repeat_multiple_data );
-		}
-
-		foreach ( $_POST[SCF_Config::NAME] as $name => $values ) {
-			foreach ( $values as $value ) {
-				if ( in_array( $name, $multiple_data_fields ) && $value === '' )
-					continue;
-				if ( !is_array( $value ) ) {
-					add_metadata( 'post', $post_id, $name, $value );
-				} else {
-					foreach ( $value as $val ) {
-						add_metadata( 'post', $post_id, $name, $val );
-					}
-				}
-			}
-		}
+		$Meta = new Smart_Custom_Fields_Meta( get_post( $post_id ) );
+		$Meta->save( $_POST );
 	}
 
 	/**
-	 * プレビューのときはプレビューのメタデータを返す
+	 * プレビューのときはプレビューのメタデータを返す。ただし、アイキャッチはリビジョンが無いので除外する
 	 * 
 	 * @param mixed $value
 	 * @param int $post_id
@@ -157,7 +84,7 @@ class Smart_Custom_Fields_Revisions {
 	 * @return mixed $value
 	 */
 	public function get_post_metadata( $value, $post_id, $meta_key, $single ) {
-		if ( $preview_id = $this->get_preview_id( $post_id ) ) {
+		if ( $preview_id = $this->get_preview_id( $post_id ) && $meta_key !== '_thumbnail_id' ) {
 			if ( $post_id !== $preview_id ) {
 				$value = get_post_meta( $preview_id, $meta_key, $single );
 			}
@@ -212,25 +139,26 @@ class Smart_Custom_Fields_Revisions {
 	public function _wp_post_revision_field_debug_preview( $value, $column, $post ) {
 		$output = '';
 		$values = SCF::gets( $post->ID );
-		foreach ( $values as $key => $value ) {
-			$output .= '[' . $key . ']' . "\n";
+		foreach ( $values as $field_name_or_group_name => $value ) {
+			$output .= sprintf( "■ %s\n", $field_name_or_group_name );
 			if ( is_array( $value ) ) {
 				if ( isset( $value[0] ) && is_array( $value[0] ) ) {
-					foreach ( $value as $sub_field_values ) {
-						foreach ( $sub_field_values as $sub_field_key => $sub_field_value ) {
-							$output .= $sub_field_key . " : ";
-							if ( is_array( $sub_field_value ) ) {
-								$output .= implode( ', ', $sub_field_value ) . "\n";
+					foreach ( $value as $i => $repeat_data_values ) {
+						$output .= sprintf( "- #%s\n", $i );
+						foreach ( $repeat_data_values as $field_name => $repeat_data_value ) {
+							$output .= sprintf( "　%s: ", $field_name );
+							if ( is_array( $repeat_data_value ) ) {
+								$output .= sprintf( "[%s]\n", implode( ', ', $repeat_data_value ) );
 							} else {
-								$output .= $sub_field_value . "\n";
+								$output .= sprintf( "%s\n", $repeat_data_value );
 							}
 						}
 					}
 				} else {
-					$output .= implode( ', ', $value ) . "\n";
+					$output .= sprintf( "[%s]\n", implode( ', ', $value ) );
 				}
 			} else {
-				$output .= $value . "\n";
+				$output .= $output .= sprintf( "%s\n", $value );
 			}
 		}
 		return $output;
