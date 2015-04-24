@@ -1,9 +1,9 @@
 /**
  * editor.js
- * Version    : 1.1.0
+ * Version    : 1.1.1
  * Author     : Takashi Kitajima
  * Created    : September 23, 2014
- * Modified   : April 11, 2015
+ * Modified   : April 24, 2015
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -96,24 +96,39 @@ jQuery( function( $ ) {
 				custom_uploader_image.open();
 				return;
 			}
+
+			wp.media.view.Modal.prototype.on( 'ready', function(){
+				$( 'select.attachment-filters' )
+					.find( '[value="uploaded"]' )
+					.attr( 'selected', true )
+					.parent()
+					.trigger( 'change' );
+			} );
+
 			custom_uploader_image = wp.media( {
-				title  : smart_cf_uploader.image_uploader_title,
-				library: {
-					type: 'image'
-				},
 				button : {
 					text: smart_cf_uploader.image_uploader_title
 				},
-				multiple: false
+				states: [
+					new wp.media.controller.Library({
+						title     :  smart_cf_uploader.image_uploader_title,
+						library   :  wp.media.query( { type: 'image' } ),
+						multiple  :  false,
+						filterable: 'uploaded'
+					})
+				]
 			} );
 
 			custom_uploader_image.on( 'select', function() {
 				var images = custom_uploader_image.state().get( 'selection' );
 				images.each( function( file ){
+					var sizes = file.get('sizes');
 					var image_area = upload_button.parent().find( '.smart-cf-upload-image' );
+					var sizename = image_area.data('size');
+					var img = sizes[ sizename ] || sizes.full;
 					image_area.find( 'img' ).remove();
 					image_area.prepend(
-						'<img src="' + file.toJSON().url + '" />'
+						'<img src="' + img.url + '" />'
 					);
 					image_area.removeClass( 'hide' );
 					upload_button.parent().find( 'input[type="hidden"]' ).val( file.toJSON().id );
