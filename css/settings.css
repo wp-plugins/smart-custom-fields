@@ -1,9 +1,9 @@
 /**
  * settings.css
- * Version    : 1.0.1
+ * Version    : 1.0.2
  * Author     : Takashi Kitajima
  * Created    : September 23, 2014
- * Modified   : January 22, 2015
+ * Modified   : April 11, 2015
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -128,6 +128,7 @@
 }
 .smart-cf-group .smart-cf-field table th {
 	font-weight: normal;
+	padding-top: 10px;
 	padding-right: 15px;
 	text-align: left;
 	vertical-align: top;
@@ -173,11 +174,13 @@
 /** ==================================================
  * #smart-cf-meta-box-condition
  */
-#smart-cf-meta-box-condition b {
+#smart-cf-meta-box-condition-post b,
+#smart-cf-meta-box-condition-profile b {
 	display: block;
 	margin: 0 0 5px;
 }
-#smart-cf-meta-box-condition label {
+#smart-cf-meta-box-condition-post label,
+#smart-cf-meta-box-condition-profile label {
 	display: block;
 	margin: 0 0 5px;
 }

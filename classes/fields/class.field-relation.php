@@ -1,10 +1,10 @@
 <?php
 /**
  * Smart_Custom_Fields_Field_Relation
- * Version    : 1.1.0
+ * Version    : 1.1.1
  * Author     : Takashi Kitajima
  * Created    : October 7, 2014
- * Modified   : February 27, 2015
+ * Modified   : March 19, 2015
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -18,6 +18,7 @@ class Smart_Custom_Fields_Field_Relation extends Smart_Custom_Fields_Field_Base 
 	protected function init() {
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_enqueue_scripts' ) );
 		add_action( 'wp_ajax_smart-cf-relational-posts-search', array( $this, 'relational_posts_search' ) );
+		add_filter( 'smart-cf-validate-get-value', array( $this, 'validate_get_value' ), 10, 2 );
 		return array(
 			'type'                => 'relation',
 			'display-name'        => __( 'Relation', 'smart-custom-fields' ),
@@ -44,7 +45,7 @@ class Smart_Custom_Fields_Field_Relation extends Smart_Custom_Fields_Field_Base 
 	 * @param string $hook
 	 */
 	public function admin_enqueue_scripts( $hook ) {
-		if ( in_array( $hook, array( 'post-new.php', 'post.php' ) ) ) {
+		if ( in_array( $hook, array( 'post-new.php', 'post.php', 'user-edit.php', 'profile.php' ) ) ) {
 			wp_enqueue_script(
 				SCF_Config::PREFIX . 'editor-relation',
 				plugins_url( SCF_Config::NAME ) . '/js/editor-relation.js',
@@ -100,7 +101,7 @@ class Smart_Custom_Fields_Field_Relation extends Smart_Custom_Fields_Field_Base 
 		$posts_per_page = get_option( 'posts_per_page' );
 
 		// 選択肢
-		$choices_posts  = get_posts( array(
+		$choices_posts = get_posts( array(
 			'post_type'      => $post_type,
 			'order'          => 'ASC',
 			'orderby'        => 'ID',
@@ -119,8 +120,9 @@ class Smart_Custom_Fields_Field_Relation extends Smart_Custom_Fields_Field_Base 
 		$selected_posts = array();
 		if ( !empty( $value ) && is_array( $value ) ) {
 			foreach ( $value as $post_id ) {
-				if ( get_post_status( $post_id ) !== 'publish' )
+				if ( get_post_status( $post_id ) !== 'publish' ) {
 					continue;
+				}
 				$post_title = get_the_title( $post_id );
 				if ( empty( $post_title ) ) {
 					$post_title = '&nbsp;';
@@ -187,7 +189,7 @@ class Smart_Custom_Fields_Field_Relation extends Smart_Custom_Fields_Field_Base 
 			<td>
 				<?php
 				$post_types = get_post_types( array(
-					'show_ui'  => true,
+					'show_ui' => true,
 				), 'objects' );
 				unset( $post_types['attachment'] );
 				unset( $post_types[SCF_Config::NAME] );
@@ -214,5 +216,26 @@ class Smart_Custom_Fields_Field_Relation extends Smart_Custom_Fields_Field_Base 
 			</td>
 		</tr>
 		<?php
+	}
+
+	/**
+	 * メタデータの表示時にバリデート
+	 *
+	 * @param array $value
+	 * @param string $field_type
+	 * @return array
+	 */
+	public function validate_get_value( $value, $field_type ) {
+		if ( $field_type === $this->get_attribute( 'type' ) ) {
+			$validated_value = array();
+			foreach ( $value as $post_id ) {
+				if ( get_post_status( $post_id ) !== 'publish' ) {
+					continue;
+				}
+				$validated_value[] = $post_id;
+			}
+			$value = $validated_value;
+		}
+		return $value;
 	}
 }

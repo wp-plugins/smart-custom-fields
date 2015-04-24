@@ -1,9 +1,9 @@
 /**
  * editor.js
- * Version    : 1.0.1
+ * Version    : 1.1.1
  * Author     : Takashi Kitajima
  * Created    : September 23, 2014
- * Modified   : February 27, 2015
+ * Modified   : April 24, 2015
  * License    : GPLv2
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
@@ -24,6 +24,13 @@ jQuery( function( $ ) {
 				$( this ).attr( 'id', 'smart-cf-wysiwyg-' + cnt + i );
 				var editor_id = $( this ).attr( 'id' );
 				$( this ).parents( '.wp-editor-wrap' ).find( 'a.add_media' ).attr( 'data-editor', editor_id );
+				tinymce.init( {
+					content_css: ['../wp-includes/js/tinymce/skins/wordpress/wp-content.css', '../wp-content/plugins/smart-custom-fields/css/wysiwyg.css'],
+					menubar: false,
+					plugins: "hr,wplink,fullscreen,wordpress,textcolor,paste,charmap",
+					toolbar1: "bold,italic,strikethrough,bullist,numlist,blockquote,hr,alignleft,aligncenter,alignright,link,unlink,wp_more,spellchecker,wp_adv,fullscreen",
+					toolbar2: "formatselect,underline,alignjustify,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help,code"
+				} );
 				tinymce.execCommand( 'mceAddEditor', false, editor_id );
 			}
 		} );
@@ -89,24 +96,39 @@ jQuery( function( $ ) {
 				custom_uploader_image.open();
 				return;
 			}
+
+			wp.media.view.Modal.prototype.on( 'ready', function(){
+				$( 'select.attachment-filters' )
+					.find( '[value="uploaded"]' )
+					.attr( 'selected', true )
+					.parent()
+					.trigger( 'change' );
+			} );
+
 			custom_uploader_image = wp.media( {
-				title  : smart_cf_uploader.image_uploader_title,
-				library: {
-					type: 'image'
-				},
 				button : {
 					text: smart_cf_uploader.image_uploader_title
 				},
-				multiple: false
+				states: [
+					new wp.media.controller.Library({
+						title     :  smart_cf_uploader.image_uploader_title,
+						library   :  wp.media.query( { type: 'image' } ),
+						multiple  :  false,
+						filterable: 'uploaded'
+					})
+				]
 			} );
 
 			custom_uploader_image.on( 'select', function() {
 				var images = custom_uploader_image.state().get( 'selection' );
 				images.each( function( file ){
+					var sizes = file.get('sizes');
 					var image_area = upload_button.parent().find( '.smart-cf-upload-image' );
+					var sizename = image_area.data('size');
+					var img = sizes[ sizename ] || sizes.full;
 					image_area.find( 'img' ).remove();
 					image_area.prepend(
-						'<img src="' + file.toJSON().url + '" />'
+						'<img src="' + img.url + '" />'
 					);
 					image_area.removeClass( 'hide' );
 					upload_button.parent().find( 'input[type="hidden"]' ).val( file.toJSON().id );
