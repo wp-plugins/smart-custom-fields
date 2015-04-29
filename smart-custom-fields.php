@@ -3,11 +3,11 @@
  * Plugin name: Smart Custom Fields
  * Plugin URI: https://github.com/inc2734/smart-custom-fields/
  * Description: Smart Custom Fields is a simple plugin that management custom fields.
- * Version: 1.3.2
+ * Version: 1.4.0
  * Author: Takashi Kitajima
  * Author URI: http://2inc.org
  * Created: October 9, 2014
- * Modified: April 24, 2015
+ * Modified: April 28, 2015
  * Text Domain: smart-custom-fields
  * Domain Path: /languages
  * License: GPLv2
@@ -47,6 +47,7 @@ class Smart_Custom_Fields {
 		require_once plugin_dir_path( __FILE__ ) . 'classes/models/class.group.php';
 		require_once plugin_dir_path( __FILE__ ) . 'classes/models/class.abstract-field-base.php';
 		require_once plugin_dir_path( __FILE__ ) . 'classes/models/class.revisions.php';
+		require_once plugin_dir_path( __FILE__ ) . 'classes/models/class.ajax.php';
 		require_once plugin_dir_path( __FILE__ ) . 'classes/class.scf.php';
 		new Smart_Custom_Fields_Revisions();
 
@@ -61,6 +62,7 @@ class Smart_Custom_Fields {
 		do_action( SCF_Config::PREFIX . 'fields-loaded' );
 		
 		add_action( 'init'          , array( $this, 'register_post_type' ) );
+		add_action( 'init'          , array( $this, 'ajax_request' ) );
 		add_action( 'admin_menu'    , array( $this, 'admin_menu' ) );
 		add_action( 'current_screen', array( $this, 'current_screen' ) );
 	}
@@ -78,6 +80,18 @@ class Smart_Custom_Fields {
 			wp_delete_post( $post->ID, true );
 		}
 		delete_post_meta_by_key( SCF_Config::PREFIX . 'repeat-multiple-data' );
+
+		// option の smart-cf-xxx を削除
+		global $wpdb;
+		$wpdb->query(
+			$wpdb->prepare(
+				"
+				DELETE FROM $wpdb->options
+					WHERE option_name LIKE %s
+				",
+				SCF_Config::PREFIX . '%'
+			)
+		);
 	}
 
 	/**
@@ -101,6 +115,7 @@ class Smart_Custom_Fields {
 			$Post->ID        = $post_id;
 			$Post->post_type = $screen->id;
 			if ( SCF::get_settings( new WP_Post( $Post ) ) ) {
+				require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.controller-base.php';
 				require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.editor.php';
 				new Smart_Custom_Fields_Revisions();
 				new Smart_Custom_Fields_Controller_Editor();
@@ -115,9 +130,21 @@ class Smart_Custom_Fields {
 				$roles = $user_data->roles;
 			}
 			if ( SCF::get_settings( get_userdata( $user_id ) ) ) {
-				require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.editor.php';
+				require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.controller-base.php';
 				require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.profile.php';
 				new Smart_Custom_Fields_Controller_Profile();
+			}
+		}
+		// タグ、カテゴリー、タクソノミー
+		elseif ( $screen->taxonomy ) {
+			$term_id = $this->get_term_id_in_admin();
+			if ( $term_id ) {
+				$term = get_term( $term_id, $screen->taxonomy );
+				if ( SCF::get_settings( $term ) ) {
+					require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.controller-base.php';
+					require_once plugin_dir_path( __FILE__ ) . 'classes/controller/class.taxonomy.php';
+					new Smart_Custom_Fields_Controller_Taxonomy();
+				}
 			}
 		}
 	}
@@ -153,6 +180,13 @@ class Smart_Custom_Fields {
 				'show_in_menu'    => false,
 			)
 		);
+	}
+
+	/**
+	 * Ajax リクエストのときに発火させたい処理をフックさせる
+	 */
+	public function ajax_request() {
+		$Ajax = new Smart_Custom_Fields_Ajax();
 	}
 
 	/**
@@ -209,6 +243,21 @@ class Smart_Custom_Fields {
 			$user_id      = $current_user->ID;
 		}
 		return $user_id;
+	}
+
+	/**
+	 * ターム編集画面でそのタームのIDを取得
+	 *
+	 * @return int
+	 */
+	protected function get_term_id_in_admin() {
+		$term_id = false;
+		if ( !empty( $_GET['tag_ID'] ) ) {
+			$term_id = $_GET['tag_ID'];
+		} elseif ( !empty( $_POST['tag_ID'] ) ) {
+			$term_id = $_POST['tag_ID'];
+		}
+		return $term_id;
 	}
 }
 new Smart_Custom_Fields();

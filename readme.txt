@@ -3,8 +3,8 @@ Contributors: inc2734, toro_unit
 Donate link: http://www.amazon.co.jp/registry/wishlist/39ANKRNSTNW40
 Tags: plugin, custom field, custom, field, meta, meta field, repeat, repeatable
 Requires at least: 3.9
-Tested up to: 4.1.1
-Stable tag: 1.3.2
+Tested up to: 4.2.1
+Stable tag: 1.4.0
 License: GPLv2
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -39,7 +39,6 @@ https://www.youtube.com/watch?v=WxPZurn0yvI
 
 * SCF::get( 'field-name' )  
 This method can get any meta data.
-
 * SCF::get( 'group-name' )  
 This method can get meta data of any group.
 
@@ -48,12 +47,17 @@ This method can get all meta data.
 
 * SCF::get_user_meta( $user_id, 'field-name' )  
 This method can get any user meta data.
-
 * SCF::get_user_meta( $user_id, 'group-name' )  
 This method can get user meta data of any group.
-
 * SCF::get_user_meta( $user_id )  
 This method can get all user meta data.
+
+* SCF::get_term_meta( $term_id, $taxonomy 'field-name' )  
+This method can get any term meta data.
+* SCF::get_term_meta( $term_id, $taxonomy, 'group-name' )  
+This method can get term meta data of any group.
+* SCF::get_term_meta( $term_id, $taxonomy )  
+This method can get all term meta data.
 
 = Register custom fields by the code. =
 
@@ -81,6 +85,12 @@ You can send your own language pack to me.
 2. Post edit page.
 
 == Changelog ==
+
+= 1.4.0 =
+* refactoring controllers.
+* Add term custom fields.
+* Add filter hook smart-cf-is_use_default_when_not_saved
+* Changed to the default value is used if the value has not been saved. If you want to revert to the previous behavior, return false in smart-cf-is_use_default_when_not_saved.
 
 = 1.3.2 =
 * Add preview size setting in the image field.
