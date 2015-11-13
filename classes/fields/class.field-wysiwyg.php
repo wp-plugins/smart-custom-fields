@@ -1,11 +1,11 @@
 <?php
 /**
  * Smart_Custom_Fields_Field_Wysiwyg
- * Version    : 1.1.1
- * Author     : Takashi Kitajima
+ * Version    : 1.1.3
+ * Author     : inc2734
  * Created    : October 7, 2014
- * Modified   : March 19, 2015
- * License    : GPLv2
+ * Modified   : September 28, 2015
+ * License    : GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
 class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
@@ -81,9 +81,16 @@ class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
 	public function get_field( $index, $value ) {
 		$name     = $this->get_field_name_in_editor( $index );
 		$disabled = $this->get_disable_attribute( $index );
+		if ( function_exists( 'format_for_editor' ) ) {
+			$value = format_for_editor( $value );
+		} else {
+			$value = wp_richedit_pre( $value );
+		}
 		return sprintf(
 			'<div class="wp-editor-wrap">
-				<div class="wp-media-buttons">%s</div>
+				<div class="wp-editor-tools hide-if-no-js">
+					<div class="wp-media-buttons">%s</div>
+				</div>
 				<div class="wp-editor-container">
 					<textarea name="%s" rows="8" class="widefat smart-cf-wp-editor" %s>%s</textarea>
 				</div>
@@ -91,7 +98,7 @@ class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
 			$this->media_buttons(),
 			esc_attr( $name ),
 			disabled( true, $disabled, false ),
-			wp_richedit_pre( $value )
+			$value
 		);
 	}
 
@@ -124,7 +131,7 @@ class Smart_Custom_Fields_Field_Wysiwyg extends Smart_Custom_Fields_Field_Base {
 		</tr>
 		<?php
 	}
-	
+
 	/**
 	 * メディアボタンを返す
 	 *

@@ -1,11 +1,11 @@
 <?php
 /**
  * SCF
- * Version    : 1.2.0
- * Author     : Takashi Kitajima
+ * Version    : 1.3.0
+ * Author     : inc2734
  * Created    : September 23, 2014
- * Modified   : March 27, 2015
- * License    : GPLv2
+ * Modified   : November 12, 2015
+ * License    : GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
 class SCF {
@@ -159,27 +159,23 @@ class SCF {
 
 		$settings = self::get_settings( $object );
 		foreach ( $settings as $Setting ) {
+			// グループ名と一致する場合はそのグループ内のフィールドを配列で返す
+			$Group = $Setting->get_group( $name );
+			if ( $Group ) {
+				$values_by_group = self::get_values_by_group( $object, $Group );
+				self::save_cache( $object, $name, $values_by_group );
+				return $values_by_group;
+			}
+			
+			// グループ名と一致しない場合は一致するフィールドを返す
 			$groups = $Setting->get_groups();
 			foreach ( $groups as $Group ) {
-				// グループ名と一致する場合はそのグループ内のフィールドを配列で返す
-				$is_repeatable = $Group->is_repeatable();
-				$group_name    = $Group->get_name();
-				if ( $is_repeatable && $group_name && $group_name === $name ) {
-					$values_by_group = self::get_values_by_group( $object, $Group );
-					self::save_cache( $object, $group_name, $values_by_group );
-					return $values_by_group;
-				}
-				// グループ名と一致しない場合は一致するフィールドを返す
-				else {
-					$fields = $Group->get_fields();
-					foreach ( $fields as $Field ) {
-						$field_name = $Field->get( 'name' );
-						if ( $field_name === $name ) {
-							$value_by_field = self::get_value_by_field( $object, $Field, $is_repeatable );
-							self::save_cache( $object, $Field->get( 'name' ), $value_by_field );
-							return $value_by_field;
-						}
-					}
+				$Field = $Group->get_field( $name );
+				if ( $Field ) {
+					$is_repeatable = $Group->is_repeatable();
+					$value_by_field = self::get_value_by_field( $object, $Field, $is_repeatable );
+					self::save_cache( $object, $name, $value_by_field );
+					return $value_by_field;
 				}
 			}
 		}
@@ -209,7 +205,7 @@ class SCF {
 					foreach ( $fields as $Field ) {
 						$field_name = $Field->get( 'name' );
 						$value_by_field = self::get_value_by_field( $object, $Field, $is_repeatable );
-						self::save_cache( $object, $Field->get( 'name' ), $value_by_field );
+						self::save_cache( $object, $field_name, $value_by_field );
 						$post_meta[$field_name] = $value_by_field;
 					}
 				}
@@ -335,7 +331,7 @@ class SCF {
 		$field_type = $Field->get_attribute( 'type' );
 		$repeat_multiple_data = self::get_repeat_multiple_data( $object );
 		if ( is_array( $repeat_multiple_data ) && isset( $repeat_multiple_data[$field_name] ) ) {
-			if ( $Meta->is_saved_by_key( $field_name ) || !$Meta->is_use_default_when_not_saved() ) {
+			if ( $Meta->is_saved() ) {
 				$_meta = $Meta->get( $field_name );
 			} else {
 				$_meta = self::get_default_value( $Field );
@@ -348,30 +344,22 @@ class SCF {
 					$value  = array_slice( $_meta, $start, $repeat_multiple_value );
 					$start += $repeat_multiple_value;
 				}
-				if ( $Meta->is_saved_by_key( $field_name ) || $Meta->is_use_default_when_not_saved() ) {
-					$value = apply_filters( SCF_Config::PREFIX . 'validate-get-value', $value, $field_type );
-				}
+				$value = apply_filters( SCF_Config::PREFIX . 'validate-get-value', $value, $field_type );
 				$meta[$repeat_multiple_key] = $value;
 			}
 		}
 		// それ以外
 		else {
+			$single = true;
 			if ( $Field->get_attribute( 'allow-multiple-data' ) || $is_repeatable ) {
-				if ( $Meta->is_saved_by_key( $field_name ) || !$Meta->is_use_default_when_not_saved() ) {
-					$meta = $Meta->get( $field_name );
-				} else {
-					$meta = self::get_default_value( $Field );
-				}
+				$single = false;
+			}
+			if ( $Meta->is_saved() ) {
+				$meta = $Meta->get( $field_name, $single );
 			} else {
-				if ( $Meta->is_saved_by_key( $field_name ) || !$Meta->is_use_default_when_not_saved() ) {
-					$meta = $Meta->get( $field_name, true );
-				} else {
-					$meta = self::get_default_value( $Field, true );
-				}
+				$meta = self::get_default_value( $Field, $single );
 			}
-			if ( $Meta->is_saved_by_key( $field_name ) || $Meta->is_use_default_when_not_saved() ) {
-				$meta = apply_filters( SCF_Config::PREFIX . 'validate-get-value', $meta, $field_type );
-			}
+			$meta = apply_filters( SCF_Config::PREFIX . 'validate-get-value', $meta, $field_type );
 		}
 		return $meta;
 	}
@@ -578,6 +566,13 @@ class SCF {
 		$id        = $Meta->get_id();
 		$type      = $Meta->get_type( false );
 		$meta_type = $Meta->get_meta_type();
+		
+		// 投稿IDで出し分けされているカスタムフィールド設定を持つ投稿の場合、
+		// プレビュー画面ではIDが変わって表示されなくなってしまうため、
+		// プレビュー画面の場合は元の投稿（プレビューの親）から設定の再取得が必要
+		if ( $meta_type === 'post' && $object->post_type === 'revision' ) {
+			$object = get_post( $object->post_parent );
+		}
 
 		$settings = array();
 		if ( !empty( $type ) ) {
@@ -808,11 +803,9 @@ class SCF {
 		foreach ( $settings as $Setting ) {
 			$groups = $Setting->get_groups();
 			foreach ( $groups as $Group ) {
-				$fields = $Group->get_fields();
-				foreach ( $fields as $Field ) {
-					if ( !is_null( $Field ) && $Field->get( 'name' ) === $field_name ) {
-						return $Field;
-					}
+				$Field = $Group->get_field( $field_name );
+				if ( $Field ) {
+					return $Field;
 				}
 			}
 		}
