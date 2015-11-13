@@ -2,10 +2,10 @@
 /**
  * Smart_Custom_Fields_Setting
  * Version    : 1.0.0
- * Author     : Takashi Kitajima
+ * Author     : inc2734
  * Created    : September 23, 2014
  * Modified   : February 27, 2015
- * License    : GPLv2
+ * License    : GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
 class Smart_Custom_Fields_Setting {
@@ -83,6 +83,20 @@ class Smart_Custom_Fields_Setting {
 	public function get_groups() {
 		return $this->groups;
 	}
+	
+	/**
+	 * この設定ページに保存されている各グループのフィールドをまとめて取得
+	 *
+	 * @return array
+	 */
+	public function get_fields() {
+		$groups = $this->get_groups();
+		$fields = array();
+		foreach ( $groups as $Group ) {
+			$fields = array_merge( $fields, $Group->get_fields() );
+		}
+		return $fields;
+	}
 
 	/**
 	 * グループを最後に追加。引数なしで空のグループを追加
@@ -93,7 +107,25 @@ class Smart_Custom_Fields_Setting {
 	 */
 	public function add_group( $group_name = null, $repeat = false, array $fields = array() ) {
 		$Group = $this->new_group( $group_name, $repeat, $fields );
-		$this->groups[] = $Group;
+		$group_name = $Group->get_name();
+		if ( $group_name ) {
+			$this->groups[$group_name] = $Group;
+		} else {
+			$this->groups[] = $Group;
+		}
+	}
+	
+	/**
+	 * グループを検索
+	 *
+	 * @param string $group_name グループ名
+	 * @return Smart_Custom_Fields_Group|false
+	 */
+	public function get_group( $group_name ) {
+		$groups = $this->get_groups();
+		if ( isset( $groups[$group_name] ) && $groups[$group_name]->is_repeatable() ) {
+			return $groups[$group_name];
+		}
 	}
 
 	/**
