@@ -1,11 +1,11 @@
 <?php
 /**
  * Smart_Custom_Fields_Controller_Base
- * Version    : 1.0.0
- * Author     : Takashi Kitajima
+ * Version    : 1.2.0
+ * Author     : inc2734
  * Created    : April 27, 2015
- * Modified   : 
- * License    : GPLv2
+ * Modified   : November 12, 2015
+ * License    : GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
 class Smart_Custom_Fields_Controller_Base {
@@ -108,13 +108,12 @@ class Smart_Custom_Fields_Controller_Base {
 	/**
 	 * カスタムフィールドを出力するための配列を生成
 	 * 
-	 * @param WP_Post|WP_User $object
+	 * @param WP_Post|WP_User|object $object
 	 * @param array $groups カスタムフィールド設定ページで保存した設定
 	 * @return array $tables カスタムフィールド表示用のテーブルを出力するための配列
 	 */
 	protected function get_tables( $object, $groups ) {
 		$Meta = new Smart_Custom_Fields_Meta( $object );
-		$id   = $Meta->get_id();
 
 		$repeat_multiple_data = SCF::get_repeat_multiple_data( $object );
 		$tables = array();
@@ -164,28 +163,24 @@ class Smart_Custom_Fields_Controller_Base {
 	/**
 	 * 複数許可フィールドのメタデータを取得
 	 * 
-	 * @param WP_Post|WP_Post $object
+	 * @param WP_Post|WP_User|object $object
 	 * @param Smart_Custom_Fields_Field_Base $Field
 	 * @param int $index
 	 * @return array or null
 	 */
 	public function get_multiple_data_field_value( $object, $Field, $index ) {
 		$Meta       = new Smart_Custom_Fields_Meta( $object );
-		$id         = $Meta->get_id();
 		$field_name = $Field->get( 'name' );
 
 		if ( is_null( $index ) ) {
 			return SCF::get_default_value( $Field );
 		}
-
-		if ( $Meta->is_saved_by_key( $field_name ) || !$Meta->is_use_default_when_not_saved() ) {
-			$value = $Meta->get( $field_name );
-			if ( !isset( $value[$index] ) ) {
-				return SCF::get_default_value( $Field );
-			}
-		} else {
+		
+		if ( !$Meta->is_saved() ) {
 			return SCF::get_default_value( $Field );
 		}
+		
+		$value = $Meta->get( $field_name );
 
 		// ループのとき
 		$repeat_multiple_data = SCF::get_repeat_multiple_data( $object );
@@ -210,25 +205,25 @@ class Smart_Custom_Fields_Controller_Base {
 	/**
 	 * 非複数許可フィールドのメタデータを取得
 	 * 
-	 * @param int $id 投稿ID or ユーザーID
+	 * @param WP_Post|WP_User|object $object
 	 * @param Smart_Custom_Fields_Field_Base $Field
 	 * @param int $index
 	 * @return string or null
 	 */
 	public function get_single_data_field_value( $object, $Field, $index ) {
 		$Meta       = new Smart_Custom_Fields_Meta( $object );
-		$id         = $Meta->get_id();
 		$field_name = $Field->get( 'name' );
 
 		if ( is_null( $index ) ) {
 			return SCF::get_default_value( $Field, true );
 		}
 
-		if ( $Meta->is_saved_by_key( $field_name ) || !$Meta->is_use_default_when_not_saved() ) {
+		if ( $Meta->is_saved() ) {
 			$value = $Meta->get( $field_name );
 			if ( isset( $value[$index] ) ) {
 				return $value[$index];
 			}
+			return '';
 		}
 		return SCF::get_default_value( $Field, true );
 	}
@@ -236,14 +231,13 @@ class Smart_Custom_Fields_Controller_Base {
 	/**
 	 * カスタムフィールド表示 table で使用する各 tr を出力
 	 * 
-	 * @param WP_Post|WP_User $object
+	 * @param WP_Post|WP_User|object $object
 	 * @param bool $is_repeat
 	 * @param array $fields
 	 * @param int, null $index
 	 */
 	protected function display_tr( $object, $is_repeat, $fields, $index = null ) {
 		$Meta = new Smart_Custom_Fields_Meta( $object );
-		$id   = $Meta->get_id();
 
 		$btn_repeat = '';
 		if ( $is_repeat ) {

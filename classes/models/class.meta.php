@@ -1,11 +1,11 @@
 <?php
 /**
  * Smart_Custom_Fields_Meta
- * Version    : 1.1.0
- * Author     : Takashi Kitajima
+ * Version    : 1.2.1
+ * Author     : inc2734
  * Created    : March 17, 2015
- * Modified   : April 26, 2015
- * License    : GPLv2
+ * Modified   : November 21, 2015
+ * License    : GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
 class Smart_Custom_Fields_Meta {
@@ -99,7 +99,7 @@ class Smart_Custom_Fields_Meta {
 
 	/**
 	 * Post ID がリビジョンのものでも良い感じに投稿タイプを取得
-	 * 
+	 *
 	 * @param int $post_id
 	 * @return string
 	 */
@@ -116,50 +116,22 @@ class Smart_Custom_Fields_Meta {
 	}
 
 	/**
-	 * 指定されたキーのカスタムフィールドが既に保存されているか
-	 *
-	 * @param string $key
-	 * @return bool
-	 */
-	public function is_saved_by_key( $key ) {
-		if ( _get_meta_table( $this->meta_type ) ) {
-			if ( $this->meta_type === 'post' ) {
-				$meta = get_post_custom_values( $key, $this->id );
-				if ( !is_null( $meta ) ) {
-					return true;
-				}
-			}
-			elseif ( $this->meta_type === 'user' ) {
-				$meta = get_user_option( $key, $this->id );
-				if ( $meta !== false ) {
-					return true;
-				}
-			}
-		} else {
-			$meta = get_option( $this->get_option_name() );
-			if ( isset( $meta[$key] ) ) {
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/**
-	 * $is_use_default_when_not_saved が true = true // 1.3.x までは false
-	 * $is_use_default_when_not_saved が false で meta_type が post で post_status が auto-draft = true
+	 * このメタデータを持つオブジェクトが保存済みかどうか
+	 * 投稿は auto-draft のときは保存されていない（新規投稿中）
+	 * タクソノミー・ユーザーのカスタムフィールドは保存後にしか表示されないので
+	 * そのままだとデフォルト値を表示できない
+	 * そこで、全てのメタデータが全く空の場合は保存されていないと判断する
 	 *
 	 * @return bool
 	 */
-	public function is_use_default_when_not_saved() {
-		$use_default_when_not_saved = apply_filters( SCF_Config::PREFIX . 'is_use_default_when_not_saved', true );
-		if (
-			$use_default_when_not_saved !== false
-			||
-			$use_default_when_not_saved === false && $this->meta_type === 'post' && in_array( get_post_status( $this->object ), array( 'auto-draft' ) )
-		) {
-			return true;
+	public function is_saved() {
+		if ( $this->meta_type === 'post' && get_post_status( $this->get_id() ) === 'auto-draft' ) {
+			return false;
 		}
-		return false;
+		if ( !$this->get() ) {
+			return false;
+		}
+		return true;
 	}
 
 	/**
@@ -170,8 +142,52 @@ class Smart_Custom_Fields_Meta {
 	 * @return string|array
 	 */
 	public function get( $key = '', $single = false ) {
-		if ( _get_meta_table( $this->meta_type ) ) {
-			return get_metadata( $this->meta_type, $this->id, $key, $single );
+		// under WP 4.4 compatibility
+		$maybe_4_3_term_meta = false;
+		if ( $this->meta_type === 'term' ) {
+			$meta = get_metadata( $this->meta_type, $this->id );
+			if ( !$meta ) {
+				$maybe_4_3_term_meta = true;
+			}
+		}
+
+		if ( _get_meta_table( $this->meta_type ) && !$maybe_4_3_term_meta ) {
+			$meta = get_metadata( $this->meta_type, $this->id, $key, $single );
+
+			if ( $key === SCF_Config::PREFIX . 'repeat-multiple-data' ) {
+				return $meta;
+			}
+
+			$settings = SCF::get_settings( $this->object );
+			if ( $key ) {
+				foreach ( $settings as $Setting ) {
+					$groups = $Setting->get_groups();
+					foreach ( $groups as $Group ) {
+						$Field = $Group->get_field( $key );
+						if ( $Field ) {
+							return $meta;
+						}
+					}
+				}
+			} else {
+				if ( is_array( $meta ) ) {
+					foreach ( $settings as $Setting ) {
+						$fields = $Setting->get_fields();
+						foreach ( $meta as $meta_key => $meta_value ) {
+							if ( isset( $fields[$meta_key] ) ) {
+								$metas[$meta_key] = $meta[$meta_key];
+							}
+						}
+					}
+				}
+			}
+			if ( isset( $metas ) ) {
+				return $metas;
+			}
+			if ( $single ) {
+				return '';
+			}
+			return array();
 		} else {
 			$option = get_option( $this->get_option_name() );
 			if ( $key !=='' && isset( $option[$key] ) ) {
@@ -280,12 +296,11 @@ class Smart_Custom_Fields_Meta {
 				return delete_metadata( $this->meta_type, $this->id, $key, $value );
 			}
 		} else {
-			$option_name = $this->get_option_name();
-
 			if ( !$key ) {
-				return delete_option( $option_name );
+				return false;
 			}
 
+			$option_name = $this->get_option_name();
 			$option = get_option( $option_name );
 
 			if ( isset( $option[$key] ) && $value === '' ) {
@@ -302,6 +317,14 @@ class Smart_Custom_Fields_Meta {
 				return update_option( $option_name, $option );
 			}
 		}
+	}
+
+	/**
+	 * Delete all term meta for less than WordPress 4.3
+	 */
+	public function delete_term_meta_for_wp43() {
+		$option_name = $this->get_option_name();
+		return delete_option( $option_name );
 	}
 
 	/**
@@ -340,7 +363,7 @@ class Smart_Custom_Fields_Meta {
 		if ( !isset( $POST[SCF_Config::NAME] ) ) {
 			return;
 		}
-		
+
 		$settings = SCF::get_settings( $object );
 		foreach ( $settings as $Setting ) {
 			$groups = $Setting->get_groups();
@@ -406,29 +429,26 @@ class Smart_Custom_Fields_Meta {
 
 		$settings = SCF::get_settings( $object );
 		foreach ( $settings as $Setting ) {
-			$groups = $Setting->get_groups();
-			foreach ( $groups as $Group ) {
-				$fields = $Group->get_fields();
-				foreach ( $fields as $Field ) {
-					$field_name = $Field->get( 'name' );
-					$this->delete( $field_name );
-					$value = SCF::get( $field_name, $revision->ID );
-					if ( is_array( $value ) ) {
-						foreach ( $value as $val ) {
-							if ( is_array( $val ) ) {
-								foreach ( $val as $v ) {
-									// ループ内複数値項目
-									$this->add( $field_name, $v );
-								}
-							} else {
-								// ループ内単一項目 or ループ外複数値項目
-								$this->add( $field_name, $val );
+			$fields = $Setting->get_fields();
+			foreach ( $fields as $Field ) {
+				$field_name = $Field->get( 'name' );
+				$this->delete( $field_name );
+				$value = SCF::get( $field_name, $revision->ID );
+				if ( is_array( $value ) ) {
+					foreach ( $value as $val ) {
+						if ( is_array( $val ) ) {
+							foreach ( $val as $v ) {
+								// ループ内複数値項目
+								$this->add( $field_name, $v );
 							}
+						} else {
+							// ループ内単一項目 or ループ外複数値項目
+							$this->add( $field_name, $val );
 						}
-					} else {
-						// ループ外単一項目
-						$this->add( $field_name, $value );
 					}
+				} else {
+					// ループ外単一項目
+					$this->add( $field_name, $value );
 				}
 			}
 		}

@@ -2,10 +2,10 @@
 /**
  * Smart_Custom_Fields_Group
  * Version    : 1.0.0
- * Author     : Takashi Kitajima
+ * Author     : inc2734
  * Created    : September 23, 2014
  * Modified   : February 27, 2015
- * License    : GPLv2
+ * License    : GPLv2 or later
  * License URI: http://www.gnu.org/licenses/gpl-2.0.html
  */
 class Smart_Custom_Fields_Group {
@@ -49,7 +49,7 @@ class Smart_Custom_Fields_Group {
 			}
 			
 			if ( !empty( $Field ) ) {
-				$fields[] = $Field;
+				$fields[$Field->get( 'name' )] = $Field;
 			}
 		}
 		$this->fields = $fields;
@@ -74,6 +74,19 @@ class Smart_Custom_Fields_Group {
 	 */
 	public function get_fields() {
 		return $this->fields;
+	}
+	
+	/**
+	 * フィールドを返す
+	 *
+	 * @param string $field_name フィールド名
+	 * @return Smart_Custom_Fields_Field_Base|null
+	 */
+	public function get_field( $field_name ) {
+		$fields = $this->get_fields();
+		if ( isset( $fields[$field_name] ) ) {
+			return $fields[$field_name];
+		}
 	}
 
 	/**
