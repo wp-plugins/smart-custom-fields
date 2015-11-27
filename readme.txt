@@ -1,11 +1,11 @@
 === Smart Custom Fields ===
-Contributors: inc2734, toro_unit
+Contributors: inc2734, toro_unit, mimosafa, hideokamoto
 Donate link: http://www.amazon.co.jp/registry/wishlist/39ANKRNSTNW40
 Tags: plugin, custom field, custom, field, meta, meta field, repeat, repeatable
 Requires at least: 3.9
-Tested up to: 4.2.1
-Stable tag: 1.4.0
-License: GPLv2
+Tested up to: 4.4-beta3
+Stable tag: 1.6.3
+License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
 Smart Custom Fields is a simple plugin that management custom fields.
@@ -85,6 +85,33 @@ You can send your own language pack to me.
 2. Post edit page.
 
 == Changelog ==
+
+= 1.6.3 =
+* Fixed a bug that metadata that isn't defined by Smart Custom Fields can't get in preview.
+
+= 1.6.2 =
+* Fixed a bug that sometimes can't get data when there are multiple Smart Custom Fields settings.
+
+= 1.6.1 =
+* Fixed a bug that custom field settings vanished when saved.
+
+= 1.6.0 =
+* Added search feature in the relation field.
+* Changed when the object isn't saved, default value is active.
+* Remove filter hook smart-cf-is_use_default_when_not_saved.
+* Fixed a bug that isn't displayed meta data in preview when using custom fields settings with post id.
+
+= 1.5.3 =
+* Fixed a wysiwyg field bug.
+
+= 1.5.2 =
+* Fixed a wysiwyg field bug.
+
+= 1.5.1 =
+* Fixed a relation field bug.
+
+= 1.5.0 =
+* Update wysiwyg field.
 
 = 1.4.0 =
 * refactoring controllers.
